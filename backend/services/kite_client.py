@@ -76,8 +76,12 @@ class KiteClientService:
         if not self.kite and KiteConnect:
             self._init_kite()
         if self.kite:
-            return self.kite.login_url()
-        return f"https://kite.zerodha.com/connect/login?v=3&api_key={config.kite_api_key}"
+            try:
+                return self.kite.login_url()
+            except Exception as e:
+                logger.error(f"Error calling self.kite.login_url(): {e}")
+        api_key = config.kite_api_key or "8u08ywqp1fuc7xvc"
+        return f"https://kite.zerodha.com/connect/login?v=3&api_key={api_key}"
 
     def exchange_token(self, request_token: str) -> Dict[str, Any]:
         """Exchanges request_token from login redirect for daily access_token."""

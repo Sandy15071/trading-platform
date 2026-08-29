@@ -55,6 +55,7 @@ def get_status():
         "connected_clients": len(active_websockets)
     }
 
+@router.get("/auth/login-url")
 @router.post("/auth/login-url")
 def get_login_url():
     url = kite_service.get_login_url()

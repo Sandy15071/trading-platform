@@ -38,8 +38,8 @@ class AppConfig:
     def reload(self):
         load_dotenv(BASE_DIR / ".env", override=True)
         # Environment variables
-        self.kite_api_key = os.getenv("KITE_API_KEY", "")
-        self.kite_api_secret = os.getenv("KITE_API_SECRET", "")
+        self.kite_api_key = os.getenv("KITE_API_KEY", "") or "8u08ywqp1fuc7xvc"
+        self.kite_api_secret = os.getenv("KITE_API_SECRET", "") or "p5f0qzu4s27o8i1r5r4q7ic6gucvw3p5"
         self.kite_access_token = os.getenv("KITE_ACCESS_TOKEN", "")
         self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
