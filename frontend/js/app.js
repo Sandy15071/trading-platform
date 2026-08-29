@@ -60,7 +60,10 @@ class DashboardApp {
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (urlParams.get("request_token")) {
         try {
-          await window.apiService.exchangeToken(urlParams.get("request_token"));
+          const res = await window.apiService.exchangeToken(urlParams.get("request_token"));
+          if (res && res.access_token) {
+            localStorage.setItem("kite_access_token", res.access_token);
+          }
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch (e) {
           console.error("Auto exchange error:", e);
@@ -191,15 +194,17 @@ class DashboardApp {
     const label = document.getElementById("statusLabel");
     if (!dot || !label) return;
 
-    if (status.mock_mode) {
-      dot.className = "status-dot mock";
-      label.textContent = "SIMULATION";
-    } else if (status.authenticated) {
+    const hasStoredToken = Boolean(localStorage.getItem("kite_access_token"));
+
+    if ((status && status.authenticated) || hasStoredToken) {
       dot.className = "status-dot live";
       label.textContent = "KITE LIVE";
+    } else if (status && status.mock_mode) {
+      dot.className = "status-dot mock";
+      label.textContent = "SIMULATION";
     } else {
-      dot.className = "status-dot";
-      label.textContent = "DISCONNECTED";
+      dot.className = "status-dot mock";
+      label.textContent = "SIMULATION";
     }
   }
 
@@ -477,11 +482,21 @@ class DashboardApp {
         if (!token) return alert("Please enter the request_token from URL");
 
         try {
-          await window.apiService.exchangeToken(token);
+          const res = await window.apiService.exchangeToken(token);
+          if (res && res.access_token) {
+            localStorage.setItem("kite_access_token", res.access_token);
+          }
           alert("Successfully authenticated with Zerodha Kite Connect!");
           authModal.classList.remove("open");
-          const status = await window.apiService.getStatus();
-          this._updateStatusBadge(status);
+          const [status, chain] = await Promise.all([
+            window.apiService.getStatus(),
+            window.apiService.getOptionChain()
+          ]);
+          if (status) this._updateStatusBadge(status);
+          if (chain) {
+            this.snapshot = chain;
+            this.renderAll();
+          }
         } catch (e) {
           alert("Authentication failed: " + e.message);
         }

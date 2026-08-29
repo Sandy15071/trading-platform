@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Body
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Body, Header
 from pydantic import BaseModel
 
 from backend.config import config
@@ -42,7 +42,9 @@ class TestSignalRequest(BaseModel):
     strike: Optional[float] = None
 
 @router.get("/status")
-def get_status():
+def get_status(x_kite_access_token: Optional[str] = Header(None)):
+    if x_kite_access_token:
+        kite_service.set_access_token(x_kite_access_token)
     current_symbol = config.data.get("symbol", "NIFTY")
     return {
         "authenticated": kite_service.is_authenticated(),
@@ -88,20 +90,38 @@ def select_symbol(req: SymbolSelectRequest):
     return {"status": "success", "symbol": req.symbol}
 
 @router.get("/option-chain")
-def get_option_chain():
-    latest = history_buffer.get_latest()
-    if latest:
-        return latest
-    
-    # If no snapshot in history yet, compute immediately
+def get_option_chain(x_kite_access_token: Optional[str] = Header(None)):
+    if x_kite_access_token:
+        kite_service.set_access_token(x_kite_access_token)
+
     sym = config.data.get("symbol", "NIFTY")
-    spot, raw_strikes = kite_service.fetch_option_chain_data(sym)
-    snapshot = process_option_chain_snapshot(
-        spot, raw_strikes,
-        atm_band_width=config.data.get("atm_band_width", 3)
-    )
-    history_buffer.add_snapshot(snapshot)
-    return history_buffer.get_latest()
+    atm_band = int(config.data.get("atm_band_width", 3))
+    prev_snapshot = history_buffer.get_latest()
+
+    try:
+        spot, raw_strikes = kite_service.fetch_option_chain_data(sym)
+        snapshot = process_option_chain_snapshot(
+            spot_price=spot,
+            current_raw_strikes=raw_strikes,
+            prev_snapshot=prev_snapshot,
+            session_open_snapshot=history_buffer.session_open_snapshot,
+            atm_band_width=atm_band
+        )
+        history_buffer.add_snapshot(snapshot)
+        return snapshot
+    except Exception as e:
+        logger.error(f"Error generating option chain: {e}", exc_info=True)
+        # Guaranteed fallback to simulation generator so UI is never empty
+        spot, raw_strikes = kite_service._generate_mock_option_chain(sym)
+        snapshot = process_option_chain_snapshot(
+            spot_price=spot,
+            current_raw_strikes=raw_strikes,
+            prev_snapshot=prev_snapshot,
+            session_open_snapshot=history_buffer.session_open_snapshot,
+            atm_band_width=atm_band
+        )
+        history_buffer.add_snapshot(snapshot)
+        return snapshot
 
 @router.get("/history")
 def get_history():

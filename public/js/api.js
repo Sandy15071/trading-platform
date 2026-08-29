@@ -9,15 +9,23 @@ class ApiService {
   }
 
   async get(endpoint) {
-    const res = await fetch(`${this.baseUrl}${endpoint}`);
+    const headers = {};
+    const token = localStorage.getItem("kite_access_token");
+    if (token) headers["X-Kite-Access-Token"] = token;
+
+    const res = await fetch(`${this.baseUrl}${endpoint}`, { headers });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
     return await res.json();
   }
 
   async post(endpoint, data = {}) {
+    const headers = { "Content-Type": "application/json" };
+    const token = localStorage.getItem("kite_access_token");
+    if (token) headers["X-Kite-Access-Token"] = token;
+
     const res = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);

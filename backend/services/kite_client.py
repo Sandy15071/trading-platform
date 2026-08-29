@@ -104,6 +104,18 @@ class KiteClientService:
             logger.error(f"Error generating session with request_token: {e}")
             raise
 
+    def set_access_token(self, token: str):
+        if not token:
+            return
+        config.kite_access_token = token
+        if not self.kite and KiteConnect:
+            self._init_kite()
+        if self.kite:
+            try:
+                self.kite.set_access_token(token)
+            except Exception as e:
+                logger.error(f"Error setting access token on Kite: {e}")
+
     def is_authenticated(self) -> bool:
         """Checks if active access token is present."""
         return bool(config.kite_access_token and len(config.kite_access_token) > 10)
