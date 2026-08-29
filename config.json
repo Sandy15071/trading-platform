@@ -1,0 +1,21 @@
+{
+  "symbol": "NIFTY",
+  "poll_interval_seconds": 1,
+  "history_buffer_size": 60,
+  "atm_band_width": 3,
+  "rules": {
+    "oi_surge_pct": 8,
+    "pcr_bullish_threshold": 1.2,
+    "pcr_bearish_threshold": 0.8,
+    "pcr_delta_threshold": 0.15,
+    "max_pain_drift_enabled": true,
+    "iv_spike_pct": 15,
+    "atm_imbalance_ratio": 1.8
+  },
+  "notifications": {
+    "sound_enabled": true,
+    "browser_push_enabled": true,
+    "telegram_enabled": true,
+    "on_screen_highlight_duration_seconds": 10
+  }
+}
