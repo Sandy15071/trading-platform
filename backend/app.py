@@ -143,9 +143,33 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-# Mount frontend directory for static assets
-if FRONTEND_DIR.exists():
-    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+
+# Direct static file serving route for serverless environments
+@app.get("/static/{file_path:path}")
+async def serve_static(file_path: str):
+    target = FRONTEND_DIR / file_path
+    if target.exists() and target.is_file():
+        media_type = "text/plain"
+        if file_path.endswith(".css"):
+            media_type = "text/css; charset=utf-8"
+        elif file_path.endswith(".js"):
+            media_type = "application/javascript; charset=utf-8"
+        elif file_path.endswith(".html"):
+            media_type = "text/html; charset=utf-8"
+        elif file_path.endswith(".json"):
+            media_type = "application/json"
+        elif file_path.endswith(".png"):
+            media_type = "image/png"
+        elif file_path.endswith(".svg"):
+            media_type = "image/svg+xml"
+            
+        try:
+            with open(target, "rb") as f:
+                return Response(content=f.read(), media_type=media_type)
+        except Exception:
+            pass
+    return Response(content="File not found", status_code=404)
 
 @app.get("/")
 @app.get("/callback")
@@ -174,5 +198,9 @@ async def handle_callback_or_index(
 
     index_file = FRONTEND_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(index_file)
-    return {"message": "Frontend not found at frontend/index.html"}
+        try:
+            with open(index_file, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read())
+        except Exception as e:
+            logger.error(f"Error reading index.html: {e}")
+    return HTMLResponse(content="<h1>Option Chain Momentum Indicator</h1><p>Frontend loading...</p>")

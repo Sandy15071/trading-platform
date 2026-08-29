@@ -1,7 +1,23 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/callback",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/redirect",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/login/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/auth/(.*)",
       "destination": "/api/index.py"
     }
   ]

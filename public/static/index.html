@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option Chain Momentum Indicator | Zerodha Kite Connect</title>
+  <meta name="description" content="Real-time option chain analytics, OI surges, PCR trend, Max Pain, and multi-channel momentum alerts for Zerodha Kite Connect.">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-logo" id="brandLogo">
+        <svg viewBox="0 0 24 24">
+          <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">MOMENTUM CHAIN</div>
+      </div>
+      <span class="brand-badge">Zerodha Kite</span>
+    </div>
+
+    <!-- Center: Symbol Selector & Spot Pill -->
+    <div class="header-center">
+      <div class="symbol-selector-wrap">
+        <div class="symbol-btn-group" id="symbolButtonGroup">
+          <button class="symbol-btn active" data-symbol="NIFTY" id="btnSymbolNifty">NIFTY</button>
+          <button class="symbol-btn" data-symbol="BANKNIFTY" id="btnSymbolBanknifty">BANKNIFTY</button>
+          <button class="symbol-btn" data-symbol="FINNIFTY" id="btnSymbolFinnifty">FINNIFTY</button>
+          <button class="symbol-btn" data-symbol="MIDCPNIFTY" id="btnSymbolMidcp">MIDCPNIFTY</button>
+        </div>
+      </div>
+
+      <div class="spot-pill" id="spotPricePill">
+        <span class="spot-label">SPOT</span>
+        <span class="spot-val" id="headerSpotPrice">--</span>
+      </div>
+    </div>
+
+    <!-- Right: Status, Poll Timer, Alert Tools, Settings -->
+    <div class="header-actions">
+      <div class="status-chip" id="connectionStatusChip">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusLabel">CONNECTING</span>
+      </div>
+
+      <div class="poll-timer-chip" id="pollTimerChip" title="Time until next option chain poll">
+        <span>POLL:</span>
+        <span id="pollCountdown" style="color:#ffffff; font-weight:700;">1s</span>
+      </div>
+
+      <!-- Sound Toggle -->
+      <button class="btn-icon active" id="soundToggleBtn" title="Sound Alerts: Enabled" aria-label="Toggle Sound Alerts">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+      </button>
+
+      <!-- Test Alert Button -->
+      <button class="btn-action btn-secondary" id="testAlertBtn" title="Trigger simulated signal across all 4 channels">
+        ⚡ Test Alert
+      </button>
+
+      <!-- Kite Auth Button -->
+      <button class="btn-action" id="kiteAuthBtn" title="Zerodha Daily Login">
+        🔑 Kite Login
+      </button>
+
+      <!-- Settings Button -->
+      <button class="btn-icon" id="settingsBtn" title="Threshold & Notification Settings" aria-label="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Dashboard View -->
+  <main class="dashboard-container">
+
+    <!-- Top Key Metric Cards -->
+    <section class="metrics-row" aria-label="Key Market Metrics">
+      <!-- Spot Price Card -->
+      <article class="metric-card" id="cardSpot">
+        <div class="metric-header">
+          <span>Underlying Spot</span>
+          <span class="badge-tag badge-neutral">LIVE</span>
+        </div>
+        <div class="metric-val" id="cardSpotVal">--</div>
+        <div class="metric-sub">ATM ± 10 Strikes Tracked</div>
+      </article>
+
+      <!-- PCR Card -->
+      <article class="metric-card" id="cardPcr">
+        <div class="metric-header">
+          <span>Put-Call Ratio (PCR)</span>
+          <span class="badge-tag badge-neutral" id="cardPcrTag">NEUTRAL</span>
+        </div>
+        <div class="metric-val" id="cardPcrVal">--</div>
+        <div class="metric-sub" id="cardPcrNear">Near-ATM: --</div>
+      </article>
+
+      <!-- Max Pain Card -->
+      <article class="metric-card alert" id="cardMaxPain">
+        <div class="metric-header">
+          <span>Max Pain Strike</span>
+          <span class="badge-tag" style="background: rgba(245, 158, 11, 0.2); color:#fbbf24;">EXPIRY MAGNET</span>
+        </div>
+        <div class="metric-val" id="cardMaxPainVal" style="color: #fbbf24;">--</div>
+        <div class="metric-sub" id="cardMaxPainSub">-- pts vs Spot</div>
+      </article>
+
+      <!-- ATM Straddle Card -->
+      <article class="metric-card" id="cardAtm">
+        <div class="metric-header">
+          <span>ATM Strike</span>
+          <span class="badge-tag badge-neutral">CENTER</span>
+        </div>
+        <div class="metric-val" id="cardAtmVal">--</div>
+        <div class="metric-sub" id="cardAtmSub">Straddle: --</div>
+      </article>
+
+      <!-- Active Signals Card -->
+      <article class="metric-card" id="cardAlerts">
+        <div class="metric-header">
+          <span>Momentum Signals</span>
+          <span class="badge-tag" style="background: rgba(59, 130, 246, 0.2); color:#60a5fa;">SESSION</span>
+        </div>
+        <div class="metric-val" id="cardAlertsVal" style="color: #60a5fa;">0</div>
+        <div class="metric-sub">Multi-Channel Active</div>
+      </article>
+    </section>
+
+    <!-- Main Grid: OI Visualizer & Option Chain Table -->
+    <section class="main-grid" aria-label="Visual Analytics & Table">
+
+      <!-- Left: Side-by-Side Open Interest Visualizer -->
+      <div class="section-panel">
+        <div class="panel-header">
+          <div class="panel-title-wrap">
+            <h2 class="panel-title">Open Interest Distribution (in Lakhs)</h2>
+          </div>
+          <div class="panel-legend">
+            <div class="legend-item"><span class="legend-dot" style="background: #059669;"></span><span>Call OI</span></div>
+            <div class="legend-item"><span class="legend-dot" style="background: #06b6d4;"></span><span>+ΔOI%</span></div>
+            <div class="legend-item"><span class="legend-dot" style="background: #e11d48;"></span><span>Put OI</span></div>
+            <div class="legend-item"><span class="legend-dot" style="background: #fb7185;"></span><span>+ΔOI%</span></div>
+            <div class="legend-item" title="Long Build-up (Price ↑, OI ↑)"><span class="legend-dot" style="background: #10b981;"></span><span>LB</span></div>
+            <div class="legend-item" title="Short Build-up (Price ↓, OI ↑)"><span class="legend-dot" style="background: #f43f5e;"></span><span>SB</span></div>
+            <div class="legend-item" title="Short Covering (Price ↑, OI ↓)"><span class="legend-dot" style="background: #06b6d4;"></span><span>SC</span></div>
+            <div class="legend-item" title="Long Unwinding (Price ↓, OI ↓)"><span class="legend-dot" style="background: #f59e0b;"></span><span>LU</span></div>
+            <div class="legend-item" title="Max Pain"><span class="legend-dot" style="background: var(--max-pain-color);"></span><span>Max Pain</span></div>
+          </div>
+        </div>
+
+        <div class="chart-container" id="oiChartContainer">
+          <canvas id="oiBarCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Right: Detailed Option Chain Table -->
+      <div class="section-panel">
+        <div class="panel-header">
+          <div class="panel-title-wrap">
+            <h2 class="panel-title">Live Option Chain Matrix</h2>
+          </div>
+          <span style="font-size: 11px; color: var(--text-dim);">21 Strike Levels</span>
+        </div>
+
+        <div class="table-scroll-wrap" id="tableWrapper">
+          <table class="option-chain-table" id="optionChainTable">
+            <thead>
+              <tr>
+                <th class="th-call">IV</th>
+                <th class="th-call">ΔOI (in Lakhs)</th>
+                <th class="th-call">CALL OI (in Lakhs)</th>
+                <th class="th-call">CALL LTP</th>
+                <th class="th-strike">STRIKE</th>
+                <th class="th-put">PUT LTP</th>
+                <th class="th-put">PUT OI (in Lakhs)</th>
+                <th class="th-put">ΔOI (in Lakhs)</th>
+                <th class="th-put">IV</th>
+              </tr>
+            </thead>
+            <tbody id="optionChainTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Secondary Grid: IV Skew, PCR Sparkline, Momentum Feed -->
+    <section class="secondary-grid" aria-label="Skew, Trends & Alerts">
+
+      <!-- IV Skew Curve -->
+      <div class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">IV Skew Curve</h2>
+          <div class="panel-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span><span>CE IV</span></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#f43f5e;"></span><span>PE IV</span></div>
+          </div>
+        </div>
+        <div class="small-chart-container">
+          <canvas id="ivSkewCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- PCR Session Sparkline -->
+      <div class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Session PCR Trend</h2>
+          <span style="font-size:11px; color:#38bdf8;">Sparkline (Last 60 Cycles)</span>
+        </div>
+        <div class="small-chart-container">
+          <canvas id="pcrSparklineCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Momentum Signal Log Feed -->
+      <div class="section-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Momentum Signal Feed</h2>
+          <span class="badge-tag" style="background: rgba(245, 158, 11, 0.15); color:#fbbf24;">REAL-TIME</span>
+        </div>
+        <div class="signal-feed-wrap" id="signalFeed">
+          <div class="empty-state">No momentum alerts fired yet. Monitoring live cycle shifts...</div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title" id="settingsModalTitle">Momentum Rules & Settings</h3>
+        <button class="btn-icon" id="closeSettingsBtn">&times;</button>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cfgPollInterval">Poll Interval (seconds)</label>
+          <input type="number" id="cfgPollInterval" min="1" max="120" value="1">
+        </div>
+        <div class="form-group">
+          <label for="cfgMockMode">Operating Mode</label>
+          <select id="cfgMockMode">
+            <option value="true">Simulation / Mock Data</option>
+            <option value="false">Live Kite Connect REST</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="cfgOISurge">Rule 1: OI Surge Threshold (%)</label>
+        <input type="number" id="cfgOISurge" step="0.5" value="8.0">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cfgPcrBull">Rule 2: PCR Bullish Cross</label>
+          <input type="number" id="cfgPcrBull" step="0.05" value="1.2">
+        </div>
+        <div class="form-group">
+          <label for="cfgPcrBear">Rule 2: PCR Bearish Cross</label>
+          <input type="number" id="cfgPcrBear" step="0.05" value="0.8">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cfgPcrDelta">Rule 2: PCR Single-Cycle Delta</label>
+          <input type="number" id="cfgPcrDelta" step="0.05" value="0.15">
+        </div>
+        <div class="form-group">
+          <label for="cfgIvSpike">Rule 4: IV Spike Jump (%)</label>
+          <input type="number" id="cfgIvSpike" step="1.0" value="15.0">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="cfgAtmImbalance">Rule 5: ATM OI Imbalance Ratio</label>
+        <input type="number" id="cfgAtmImbalance" step="0.1" value="1.8">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cfgTgToken">Telegram Bot Token (Optional)</label>
+          <input type="password" id="cfgTgToken" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
+        </div>
+        <div class="form-group">
+          <label for="cfgTgChat">Telegram Chat ID (Optional)</label>
+          <input type="text" id="cfgTgChat" placeholder="-1001234567890">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" onclick="document.getElementById('settingsModal').classList.remove('open')">Cancel</button>
+        <button class="btn-action" id="saveSettingsBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kite Login Modal -->
+  <div class="modal-backdrop" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title" id="authModalTitle">Zerodha Kite Connect Daily Login</h3>
+        <button class="btn-icon" id="closeAuthBtn">&times;</button>
+      </div>
+
+      <p style="font-size:12px; color:var(--text-muted);">
+        Zerodha requires a daily re-authentication to generate an active access token. Follow these steps:
+      </p>
+
+      <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:6px; font-size:12px; display:flex; flex-direction:column; gap:8px;">
+        <div><strong>Step 1:</strong> Click the button below to open Zerodha Kite login.</div>
+        <button class="btn-action btn-secondary" id="openLoginUrlBtn" style="align-self:flex-start;">
+          🌐 Open Kite Login Page
+        </button>
+        <div><strong>Step 2:</strong> After logging in, you will be redirected to your redirect URL with a <code>request_token=...</code> parameter.</div>
+        <div><strong>Step 3:</strong> Paste the <code>request_token</code> below and click Exchange:</div>
+      </div>
+
+      <div class="form-group">
+        <label for="requestTokenInput">Request Token</label>
+        <input type="text" id="requestTokenInput" placeholder="Paste request_token here">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" onclick="document.getElementById('authModal').classList.remove('open')">Close</button>
+        <button class="btn-action" id="submitTokenBtn">Exchange & Save Token</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/audio.js"></script>
+  <script src="/static/js/notifications.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
