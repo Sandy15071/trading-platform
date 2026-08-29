@@ -111,17 +111,20 @@ def get_option_chain(x_kite_access_token: Optional[str] = Header(None)):
         return snapshot
     except Exception as e:
         logger.error(f"Error generating option chain: {e}", exc_info=True)
-        # Guaranteed fallback to simulation generator so UI is never empty
-        spot, raw_strikes = kite_service._generate_mock_option_chain(sym)
-        snapshot = process_option_chain_snapshot(
-            spot_price=spot,
-            current_raw_strikes=raw_strikes,
-            prev_snapshot=prev_snapshot,
-            session_open_snapshot=history_buffer.session_open_snapshot,
-            atm_band_width=atm_band
-        )
-        history_buffer.add_snapshot(snapshot)
-        return snapshot
+        if config.mock_mode:
+            # Fallback for local testing only
+            spot, raw_strikes = kite_service._generate_mock_option_chain(sym)
+            snapshot = process_option_chain_snapshot(
+                spot_price=spot,
+                current_raw_strikes=raw_strikes,
+                prev_snapshot=prev_snapshot,
+                session_open_snapshot=history_buffer.session_open_snapshot,
+                atm_band_width=atm_band
+            )
+            history_buffer.add_snapshot(snapshot)
+            return snapshot
+        else:
+            raise HTTPException(status_code=503, detail="Live market data not available. Please ensure Kite Connect is logged in and market is open.")
 
 @router.get("/history")
 def get_history():

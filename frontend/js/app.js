@@ -198,6 +198,9 @@ class DashboardApp {
   _updateStatusBadge(status) {
     const dot = document.getElementById("statusDot");
     const label = document.getElementById("statusLabel");
+    const overlay = document.getElementById("unauthenticatedOverlay");
+    const content = document.getElementById("authenticatedContent");
+    
     if (!dot || !label) return;
 
     const hasStoredToken = Boolean(localStorage.getItem("kite_access_token"));
@@ -205,9 +208,13 @@ class DashboardApp {
     if ((status && status.authenticated) || hasStoredToken) {
       dot.className = "status-dot live";
       label.textContent = "KITE LIVE";
+      if (overlay) overlay.style.display = "none";
+      if (content) content.style.display = "block";
     } else {
       dot.className = "status-dot";
       label.textContent = "LOGIN REQUIRED";
+      if (overlay) overlay.style.display = "block";
+      if (content) content.style.display = "none";
     }
   }
 

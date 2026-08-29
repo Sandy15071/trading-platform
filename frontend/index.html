@@ -87,8 +87,19 @@
   <!-- Main Dashboard View -->
   <main class="dashboard-container">
 
-    <!-- Top Key Metric Cards -->
-    <section class="metrics-row" aria-label="Key Market Metrics">
+    <div id="unauthenticatedOverlay" style="display: none; text-align: center; padding: 100px 20px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+      <h2 style="color: #fbbf24; font-size: 24px; margin-bottom: 16px;">Kite Connect Authentication Required</h2>
+      <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px; max-width: 500px; margin-left: auto; margin-right: auto;">
+        The simulation system has been disabled for production. Please log in to Zerodha Kite to connect to the live market data stream and view the options dashboard.
+      </p>
+      <button class="btn-action" onclick="document.getElementById('authModal').classList.add('open')" style="font-size: 16px; padding: 12px 24px;">
+        🔑 Open Kite Login
+      </button>
+    </div>
+
+    <div id="authenticatedContent">
+      <!-- Top Key Metric Cards -->
+      <section class="metrics-row" aria-label="Key Market Metrics">
       <!-- Spot Price Card -->
       <article class="metric-card" id="cardSpot">
         <div class="metric-header">
@@ -240,7 +251,7 @@
       </div>
 
     </section>
-
+    </div>
   </main>
 
   <!-- Settings Modal -->
