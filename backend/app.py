@@ -145,7 +145,17 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api")
 app.include_router(api_router)
 
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled Exception on {request.url}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"error": str(exc), "type": type(exc).__name__}
+    )
+
+handler = app
 
 # Direct static file serving route for serverless environments
 @app.get("/static/{file_path:path}")

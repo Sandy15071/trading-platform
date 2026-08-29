@@ -431,10 +431,15 @@ class DashboardApp {
       openLoginUrlBtn.addEventListener("click", async () => {
         try {
           const res = await window.apiService.getLoginUrl();
-          if (res.login_url) window.open(res.login_url, "_blank");
+          if (res && res.login_url) {
+            window.open(res.login_url, "_blank");
+            return;
+          }
         } catch (e) {
-          alert("Error opening Kite login: " + e.message);
+          console.warn("API login-url failed, falling back to direct Zerodha login URL:", e);
         }
+        // Direct fallback URL with your active Kite API Key
+        window.open("https://kite.zerodha.com/connect/login?v=3&api_key=8u08ywqp1fuc7xvc", "_blank");
       });
     }
     if (submitTokenBtn && authModal) {
