@@ -199,12 +199,9 @@ class DashboardApp {
     if ((status && status.authenticated) || hasStoredToken) {
       dot.className = "status-dot live";
       label.textContent = "KITE LIVE";
-    } else if (status && status.mock_mode) {
-      dot.className = "status-dot mock";
-      label.textContent = "SIMULATION";
     } else {
-      dot.className = "status-dot mock";
-      label.textContent = "SIMULATION";
+      dot.className = "status-dot";
+      label.textContent = "LOGIN REQUIRED";
     }
   }
 
@@ -527,7 +524,6 @@ class DashboardApp {
     setVal("cfgPcrDelta", rules.pcr_delta_threshold);
     setVal("cfgIvSpike", rules.iv_spike_pct);
     setVal("cfgAtmImbalance", rules.atm_imbalance_ratio);
-    setVal("cfgMockMode", configData.mock_mode ? "true" : "false");
   }
 
   async _saveConfigForm() {
