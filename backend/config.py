@@ -59,8 +59,11 @@ class AppConfig:
             self.save()
 
     def save(self):
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, indent=2)
+        try:
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.data, f, indent=2)
+        except Exception:
+            pass
 
     def update(self, new_data: Dict[str, Any]):
         def deep_merge(source, destination):
@@ -74,25 +77,28 @@ class AppConfig:
         self.save()
 
     def update_env(self, key: str, value: str):
-        env_file = BASE_DIR / ".env"
-        lines = []
-        if env_file.exists():
-            with open(env_file, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-        
-        updated = False
-        new_lines = []
-        for line in lines:
-            if line.startswith(f"{key}="):
+        try:
+            env_file = BASE_DIR / ".env"
+            lines = []
+            if env_file.exists():
+                with open(env_file, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+            
+            updated = False
+            new_lines = []
+            for line in lines:
+                if line.startswith(f"{key}="):
+                    new_lines.append(f"{key}={value}\n")
+                    updated = True
+                else:
+                    new_lines.append(line)
+            if not updated:
                 new_lines.append(f"{key}={value}\n")
-                updated = True
-            else:
-                new_lines.append(line)
-        if not updated:
-            new_lines.append(f"{key}={value}\n")
 
-        with open(env_file, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
+            with open(env_file, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+        except Exception:
+            pass
 
         os.environ[key] = value
         if key == "KITE_ACCESS_TOKEN":

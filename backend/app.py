@@ -1,6 +1,8 @@
+import os
+import time
 import asyncio
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 from urllib.parse import quote
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -109,17 +111,20 @@ async def polling_worker():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global poll_task, is_running
-    is_running = True
-    poll_task = asyncio.create_task(polling_worker())
+    is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+    if not is_serverless:
+        is_running = True
+        poll_task = asyncio.create_task(polling_worker())
     yield
-    is_running = False
-    if poll_task:
-        poll_task.cancel()
-        try:
-            await poll_task
-        except asyncio.CancelledError:
-            pass
-    logger.info("Background polling worker stopped.")
+    if not is_serverless:
+        is_running = False
+        if poll_task:
+            poll_task.cancel()
+            try:
+                await poll_task
+            except asyncio.CancelledError:
+                pass
+        logger.info("Background polling worker stopped.")
 
 app = FastAPI(
     title="Option Chain Momentum Indicator",
