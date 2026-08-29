@@ -201,9 +201,9 @@ async def handle_callback_or_index(
     if request_token:
         try:
             logger.info(f"Received request_token from Kite redirect: {request_token[:6]}...")
-            kite_service.exchange_token(request_token)
-            config.update_env("MOCK_MODE", "false")
-            return RedirectResponse(url="/?auth=success")
+            res = kite_service.exchange_token(request_token)
+            token = res.get("access_token", "")
+            return RedirectResponse(url=f"/?auth=success&access_token={token}")
         except Exception as e:
             logger.error(f"Failed to auto-exchange request_token: {e}")
             return RedirectResponse(url=f"/?auth=error&msg={quote(str(e))}")

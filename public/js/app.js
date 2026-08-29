@@ -52,7 +52,13 @@ class DashboardApp {
   async _loadInitialState() {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get("auth") === "success") {
+      const urlAccessToken = urlParams.get("access_token");
+      if (urlAccessToken) {
+        localStorage.setItem("kite_access_token", urlAccessToken);
+        console.log("Kite access token saved to localStorage from redirect callback.");
+      }
+
+      if (urlParams.get("auth") === "success" || urlAccessToken) {
         window.history.replaceState({}, document.title, window.location.pathname);
         console.log("Kite Connect authenticated successfully.");
       } else if (urlParams.get("auth") === "error") {
