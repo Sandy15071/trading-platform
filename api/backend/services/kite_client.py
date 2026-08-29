@@ -1,14 +1,13 @@
+import csv
+import io
+import hashlib
 import logging
 import math
 import random
 import time
+import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
-
-try:
-    from kiteconnect import KiteConnect
-except ImportError:
-    KiteConnect = None
 
 from backend.config import config
 
@@ -47,7 +46,6 @@ INDEX_CONFIG = {
 
 class KiteClientService:
     def __init__(self):
-        self.kite: Optional[Any] = None
         self.instruments_cache: Dict[str, Any] = {}
         self.last_instruments_fetch: float = 0
         self.mock_spot_prices: Dict[str, float] = {
@@ -57,49 +55,40 @@ class KiteClientService:
             "MIDCPNIFTY": 12840.0,
         }
         self.mock_strikes_state: Dict[str, Dict[float, Dict[str, Any]]] = {}
-        self._init_kite()
-
-    def _init_kite(self):
-        """Initializes the KiteConnect instance with api_key and access_token if available."""
-        if KiteConnect and config.kite_api_key:
-            try:
-                self.kite = KiteConnect(api_key=config.kite_api_key)
-                if config.kite_access_token:
-                    self.kite.set_access_token(config.kite_access_token)
-                logger.info("KiteConnect client initialized")
-            except Exception as e:
-                logger.error(f"Failed to initialize KiteConnect: {e}")
-                self.kite = None
 
     def get_login_url(self) -> str:
         """Generates Zerodha Kite Connect login URL."""
-        if not self.kite and KiteConnect:
-            self._init_kite()
-        if self.kite:
-            try:
-                return self.kite.login_url()
-            except Exception as e:
-                logger.error(f"Error calling self.kite.login_url(): {e}")
         api_key = config.kite_api_key or "8u08ywqp1fuc7xvc"
         return f"https://kite.zerodha.com/connect/login?v=3&api_key={api_key}"
 
     def exchange_token(self, request_token: str) -> Dict[str, Any]:
-        """Exchanges request_token from login redirect for daily access_token."""
-        if not self.kite:
-            self._init_kite()
-        if not self.kite:
-            raise ValueError("KiteConnect is not initialized. Please verify KITE_API_KEY in .env")
+        """Exchanges request_token from login redirect for daily access_token using direct Zerodha REST API."""
+        api_key = config.kite_api_key or "8u08ywqp1fuc7xvc"
+        api_secret = config.kite_api_secret or "p5f0qzu4s27o8i1r5r4q7ic6gucvw3p5"
 
         try:
-            data = self.kite.generate_session(request_token, api_secret=config.kite_api_secret)
-            access_token = data.get("access_token")
-            if access_token:
-                self.kite.set_access_token(access_token)
-                config.update_env("KITE_ACCESS_TOKEN", access_token)
-                logger.info("Kite session generated and access_token saved successfully")
-                return {"status": "success", "user_id": data.get("user_id"), "access_token": access_token}
-            else:
-                raise ValueError("Access token not returned from Kite session generation")
+            checksum = hashlib.sha256(f"{api_key}{request_token}{api_secret}".encode("utf-8")).hexdigest()
+            resp = requests.post(
+                "https://api.kite.trade/session/token",
+                data={
+                    "api_key": api_key,
+                    "request_token": request_token,
+                    "checksum": checksum
+                },
+                timeout=10
+            )
+            res_data = resp.json()
+            if resp.status_code == 200 and res_data.get("status") == "success":
+                data = res_data.get("data", {})
+                access_token = data.get("access_token")
+                if access_token:
+                    self.set_access_token(access_token)
+                    config.update_env("KITE_ACCESS_TOKEN", access_token)
+                    logger.info("Kite session generated and access_token saved successfully via REST API")
+                    return {"status": "success", "user_id": data.get("user_id"), "access_token": access_token}
+            
+            err_msg = res_data.get("message", f"HTTP {resp.status_code}")
+            raise ValueError(f"Zerodha Token Exchange Failed: {err_msg}")
         except Exception as e:
             logger.error(f"Error generating session with request_token: {e}")
             raise
@@ -108,17 +97,65 @@ class KiteClientService:
         if not token:
             return
         config.kite_access_token = token
-        if not self.kite and KiteConnect:
-            self._init_kite()
-        if self.kite:
-            try:
-                self.kite.set_access_token(token)
-            except Exception as e:
-                logger.error(f"Error setting access token on Kite: {e}")
+        logger.info(f"Active access token configured: {token[:6]}...")
 
     def is_authenticated(self) -> bool:
         """Checks if active access token is present."""
         return bool(config.kite_access_token and len(config.kite_access_token) > 10)
+
+    def quote(self, instruments: List[str]) -> Dict[str, Any]:
+        """Fetches quotes for instruments using direct Zerodha REST API."""
+        api_key = config.kite_api_key or "8u08ywqp1fuc7xvc"
+        access_token = config.kite_access_token
+        if not access_token:
+            return {}
+
+        headers = {
+            "X-Kite-Version": "3",
+            "Authorization": f"token {api_key}:{access_token}"
+        }
+        try:
+            resp = requests.get("https://api.kite.trade/quote", params={"i": instruments}, headers=headers, timeout=8)
+            if resp.status_code == 200:
+                return resp.json().get("data", {})
+            logger.warning(f"Kite quote API returned {resp.status_code}: {resp.text}")
+            return {}
+        except Exception as e:
+            logger.error(f"Kite quote error: {e}")
+            return {}
+
+    def fetch_nfo_instruments(self) -> List[Dict[str, Any]]:
+        """Downloads and parses NFO instrument CSV from Zerodha."""
+        api_key = config.kite_api_key or "8u08ywqp1fuc7xvc"
+        access_token = config.kite_access_token
+        headers = {
+            "X-Kite-Version": "3",
+            "Authorization": f"token {api_key}:{access_token}"
+        }
+        try:
+            resp = requests.get("https://api.kite.trade/instruments/NFO", headers=headers, timeout=12)
+            if resp.status_code == 200:
+                reader = csv.DictReader(io.StringIO(resp.text))
+                instruments = []
+                for row in reader:
+                    instruments.append({
+                        "instrument_token": int(row.get("instrument_token", 0)),
+                        "exchange_token": row.get("exchange_token", ""),
+                        "tradingsymbol": row.get("tradingsymbol", ""),
+                        "name": row.get("name", ""),
+                        "last_price": float(row.get("last_price", 0.0) or 0.0),
+                        "expiry": row.get("expiry", ""),
+                        "strike": float(row.get("strike", 0.0) or 0.0),
+                        "tick_size": float(row.get("tick_size", 0.05) or 0.05),
+                        "lot_size": int(row.get("lot_size", 1) or 1),
+                        "instrument_type": row.get("instrument_type", ""),
+                        "segment": row.get("segment", ""),
+                        "exchange": row.get("exchange", "")
+                    })
+                return instruments
+        except Exception as e:
+            logger.error(f"Error fetching NFO instruments: {e}")
+        return []
 
     def get_available_symbols(self) -> List[Dict[str, Any]]:
         """Returns list of supported underlying index symbols."""
@@ -138,7 +175,7 @@ class KiteClientService:
         Fetches or simulates option chain data.
         Returns: (spot_price, raw_strikes_list)
         """
-        if config.mock_mode or not self.is_authenticated() or not self.kite:
+        if config.mock_mode or not self.is_authenticated():
             return self._generate_mock_option_chain(symbol)
         
         try:
@@ -153,7 +190,7 @@ class KiteClientService:
         spot_sym = cfg["spot_symbol"]
 
         # 1. Fetch Spot Price
-        quotes = self.kite.quote([spot_sym])
+        quotes = self.quote([spot_sym])
         spot_quote = quotes.get(spot_sym, {})
         spot_price = float(spot_quote.get("last_price", cfg["base_price"]))
 
@@ -161,7 +198,7 @@ class KiteClientService:
         now = time.time()
         if not self.instruments_cache or (now - self.last_instruments_fetch) > 14400:
             logger.info("Fetching NFO instrument master list from Kite...")
-            nfo_instruments = self.kite.instruments("NFO")
+            nfo_instruments = self.fetch_nfo_instruments()
             self.instruments_cache = {
                 item["tradingsymbol"]: item for item in nfo_instruments
             }
@@ -209,7 +246,7 @@ class KiteClientService:
                 symbols_to_quote.append(symbol_tag)
 
         # Fetch quotes in batch
-        opt_quotes = self.kite.quote(symbols_to_quote) if symbols_to_quote else {}
+        opt_quotes = self.quote(symbols_to_quote) if symbols_to_quote else {}
 
         raw_strikes = []
         for st in sorted(selected_strikes):
