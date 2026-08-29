@@ -11,7 +11,7 @@ from backend.services.history_buffer import history_buffer
 from backend.services.momentum_engine import MomentumEngine
 from backend.services.notifier import notifier
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 logger = logging.getLogger("api")
 
 momentum_engine = MomentumEngine(history_buffer)

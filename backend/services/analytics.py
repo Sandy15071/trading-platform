@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 
 def get_atm_strike(spot_price: float, available_strikes: List[float]) -> float:
     """Find the strike closest to the current spot price."""
@@ -157,7 +157,7 @@ def calculate_iv_skew(
         "curve": skew_curve
     }
 
-def determine_buildup(delta_oi: int | float, delta_ltp: float) -> str:
+def determine_buildup(delta_oi: Union[int, float], delta_ltp: float) -> str:
     """
     Derives derivative build-up state from Price & OI movement:
     - LONG_BUILDUP (Price >= 0, OI > 0)

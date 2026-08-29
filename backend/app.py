@@ -141,6 +141,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount API routes with /api prefix and bare prefix for seamless serverless routing
+app.include_router(api_router, prefix="/api")
 app.include_router(api_router)
 
 from fastapi.responses import HTMLResponse, RedirectResponse, Response

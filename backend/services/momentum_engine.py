@@ -1,9 +1,9 @@
 import time
 import uuid
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from backend.services.history_buffer import HistoryBuffer
 
-def format_indian_number(num: int | float) -> str:
+def format_indian_number(num: Union[int, float]) -> str:
     """Formats an integer or float using Indian grouping (e.g. 1,32,95,230)."""
     try:
         n = int(round(num))
@@ -23,7 +23,7 @@ def format_indian_number(num: int | float) -> str:
     except Exception:
         return f"{num:,.0f}"
 
-def format_indian_compact(num: int | float) -> str:
+def format_indian_compact(num: Union[int, float]) -> str:
     """Formats large numbers into Lakhs (L) and Crores (Cr) (e.g. 1.33 Cr, 46.93 L)."""
     try:
         n = abs(float(num))
