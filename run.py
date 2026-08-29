@@ -28,8 +28,8 @@ def open_browser_delayed(url: str, delay: float = 1.2):
 
 def main():
     parser = argparse.ArgumentParser(description="Zerodha Option Chain Momentum Indicator Dashboard")
-    parser.add_argument("--host", default=config.host, help=f"Bind host (default: {config.host})")
-    parser.add_argument("--port", type=int, default=config.port, help=f"Bind port (default: {config.port})")
+    parser.add_argument("--host", default=os.getenv("HOST", "0.0.0.0"), help="Bind host (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", config.port)), help=f"Bind port (default: {config.port})")
     parser.add_argument("--mock", action="store_true", help="Force Simulation / Mock Data mode")
     parser.add_argument("--live", action="store_true", help="Force Live Kite Connect mode")
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open browser")
