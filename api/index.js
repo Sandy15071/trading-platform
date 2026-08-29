@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 const API_KEY = process.env.KITE_API_KEY || '8u08ywqp1fuc7xvc';
 const API_SECRET = process.env.KITE_API_SECRET || 'p5f0qzu4s27o8i1r5r4q7ic6gucvw3p5';
@@ -13,7 +13,6 @@ const INDEX_CONFIG = {
 let currentSymbol = 'NIFTY';
 let activeAccessToken = '';
 let prevSnapshot = null;
-let lastTickTime = 0;
 
 function calculateMaxPain(strikes) {
   let minLoss = Infinity;
@@ -140,7 +139,7 @@ function generateMockStrikes(spotPrice) {
   return strikes;
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Kite-Access-Token');
@@ -149,7 +148,7 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  const url = req.url.split('?')[0];
+  const url = (req.url || '').split('?')[0];
   const token = req.headers['x-kite-access-token'] || activeAccessToken;
 
   try {
@@ -236,7 +235,7 @@ module.exports = async (req, res) => {
     }
 
     // 6. Option Chain
-    if (url.endsWith('/option-chain') || url === '/api') {
+    if (url.endsWith('/option-chain') || url === '/api' || url.startsWith('/api')) {
       const cfg = INDEX_CONFIG[currentSymbol] || INDEX_CONFIG.NIFTY;
       let spotPrice = cfg.base_price;
       let rawStrikes = [];
@@ -269,4 +268,4 @@ module.exports = async (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: err.message, stack: err.stack });
   }
-};
+}
