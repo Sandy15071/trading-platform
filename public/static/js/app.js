@@ -28,6 +28,7 @@ class DashboardApp {
     this.pollInterval = 1;
     this.timeUntilPoll = 1;
     this.countdownTimer = null;
+    this.fallbackInterval = null;
     this.alertingRows = new Set();
   }
 
@@ -38,6 +39,7 @@ class DashboardApp {
     await this._loadInitialState();
     this._startWebSocket();
     this._startCountdown();
+    this._startPollingFallback();
 
     // Request notification permission on first user click anywhere
     document.addEventListener("click", () => {
@@ -65,20 +67,26 @@ class DashboardApp {
         }
       }
 
-      const [status, chain, history, signals, config] = await Promise.all([
-        window.apiService.getStatus(),
-        window.apiService.getOptionChain(),
-        window.apiService.getHistory(),
-        window.apiService.getSignals(),
-        window.apiService.getConfig()
-      ]);
+      // Safe individual fetching
+      let status = null, chain = null, history = null, signals = null, config = null;
+      try { status = await window.apiService.getStatus(); } catch (e) { console.warn("Status fetch error:", e); }
+      try { chain = await window.apiService.getOptionChain(); } catch (e) { console.warn("Chain fetch error:", e); }
+      try { history = await window.apiService.getHistory(); } catch (e) { console.warn("History fetch error:", e); }
+      try { signals = await window.apiService.getSignals(); } catch (e) { console.warn("Signals fetch error:", e); }
+      try { config = await window.apiService.getConfig(); } catch (e) { console.warn("Config fetch error:", e); }
 
-      this.currentSymbol = status.current_symbol || "NIFTY";
-      this.pollInterval = status.poll_interval_seconds || 1;
-      this.timeUntilPoll = this.pollInterval;
+      if (status) {
+        this.currentSymbol = status.current_symbol || "NIFTY";
+        this.pollInterval = status.poll_interval_seconds || 1;
+        this.timeUntilPoll = this.pollInterval;
+        this._updateStatusBadge(status);
+      } else {
+        this._updateStatusBadge({ authenticated: false, mock_mode: true });
+      }
 
-      this._updateStatusBadge(status);
-      this._populateConfigForm(config);
+      if (config) {
+        this._populateConfigForm(config);
+      }
 
       if (chain) {
         this.snapshot = chain;
@@ -95,6 +103,26 @@ class DashboardApp {
     } catch (e) {
       console.error("Failed to load initial dashboard state:", e);
     }
+  }
+
+  _startPollingFallback() {
+    if (this.fallbackInterval) clearInterval(this.fallbackInterval);
+    this.fallbackInterval = setInterval(async () => {
+      // If WebSocket is not OPEN (e.g. Serverless / Vercel), continuously poll via HTTP
+      if (!window.apiService.ws || window.apiService.ws.readyState !== WebSocket.OPEN) {
+        try {
+          const chain = await window.apiService.getOptionChain();
+          if (chain) {
+            this.snapshot = chain;
+            this.renderAll();
+          }
+          const status = await window.apiService.getStatus();
+          if (status) this._updateStatusBadge(status);
+        } catch (e) {
+          console.warn("Polling cycle warning:", e);
+        }
+      }
+    }, Math.max(1000, this.pollInterval * 1000));
   }
 
   _startWebSocket() {

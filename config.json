@@ -4,7 +4,7 @@
   "history_buffer_size": 60,
   "atm_band_width": 3,
   "rules": {
-    "oi_surge_pct": 8,
+    "oi_surge_pct": 8.0,
     "pcr_bullish_threshold": 1.2,
     "pcr_bearish_threshold": 0.8,
     "pcr_delta_threshold": 0.15,
